@@ -1,4 +1,4 @@
-from typing import Callable, Type
+from typing import Type
 
 import pytest
 
@@ -26,12 +26,13 @@ class MockRequestHandler(RequestHandler):
 
 
 class MockMiddleware(ProxifierMiddleware):
-    """`ProxifierMiddleware` mock - contains .cls calls counter & __call__()"""
-    calls = 0
+    """`ProxifierMiddleware` mock - contains calls counter & __call__()"""
+    def __init__(self):
+        self.calls = 0
 
-    @classmethod
-    def __call__(cls, request, call_next: Callable):
-        cls.calls += 1
+    async def __call__(self, request, call_next):
+        self.calls += 1
+        await call_next()
 
 
 class TestProxifierMiddlewaresHandler:
@@ -73,11 +74,13 @@ class TestProxifierMiddlewaresHandler:
 
         _proxifier.handler = request_handler
 
-        _proxifier.add_pre_middleware(middleware())
+        m1, m2 = middleware(), middleware()
 
-        _proxifier.add_post_middleware(middleware())
+        _proxifier.add_pre_middleware(m1)
+
+        _proxifier.add_post_middleware(m2)
 
         await _proxifier.handle(mock_request)
 
         assert mock_request.calls == 1
-        assert middleware.calls == 2
+        assert m1.calls == 1

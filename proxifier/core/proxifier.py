@@ -12,9 +12,9 @@ class Proxifier:
     """Handles request"""
 
     def __init__(self,
-                 pre:       Optional[List[ProxifierMiddleware]] = None,
-                 post:      Optional[List[ProxifierMiddleware]] = None,
-                 handler:   Optional[RequestHandler] = BasicAsyncHandler()):
+                 pre: Optional[List[ProxifierMiddleware]] = None,
+                 post: Optional[List[ProxifierMiddleware]] = None,
+                 handler: Optional[RequestHandler] = BasicAsyncHandler()):
         self._pre = pre if pre else []
         self._post = post if post else []
         self._handler = handler
@@ -63,12 +63,12 @@ class Proxifier:
         """Runs middleware chain"""
         if index < len(middlewares):
             middleware = middlewares[index]
-            return middleware(request=request,
-                              call_next=lambda: self._run_middlewares(
-                                  type_=type_,
-                                  request=request,
-                                  index=index + 1,
-                                  middlewares=middlewares))
+            return await middleware(request=request,
+                                    call_next=lambda: self._run_middlewares(
+                                        type_=type_,
+                                        request=request,
+                                        index=index + 1,
+                                        middlewares=middlewares))
         else:
             return
 
