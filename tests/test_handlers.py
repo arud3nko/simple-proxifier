@@ -69,7 +69,7 @@ class TestProxifierRequestHandlers:
         url = client.server.make_url("/")
         _requests = requests(url)
 
-        basic_async_request_handler.session = client.session
+        basic_async_request_handler.session = client.session.__class__
 
         for _request in _requests:
             _resp: Response = await basic_async_request_handler(_request)
