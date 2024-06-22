@@ -1,9 +1,10 @@
-from typing import Type
+from typing import Type, Callable, Coroutine
 
 import pytest
 
 from proxifier.types import ProxifierMiddleware, RequestHandler
 from proxifier.core import Proxifier
+from proxifier.types.generic import Request_T
 
 
 class MockRequest:
@@ -33,6 +34,12 @@ class MockMiddleware(ProxifierMiddleware):
     async def __call__(self, request, call_next):
         self.calls += 1
         await call_next()
+
+
+class ChangeRequestHeaderMiddleware(ProxifierMiddleware):
+    """This middleware changes incoming request headers"""
+    async def __call__(self, request: Request_T, call_next):
+        pass
 
 
 class TestProxifierMiddlewaresHandler:
@@ -84,3 +91,8 @@ class TestProxifierMiddlewaresHandler:
 
         assert mock_request.calls == 1
         assert m1.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_middleware_changes_request_instance(self,
+                                                      ):
+        pass

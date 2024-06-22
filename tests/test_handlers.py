@@ -19,12 +19,23 @@ async def mock_response(request: Request):
     return Response(text=SUCCESS)
 
 
+class MockRelURL:
+    """Mock query params"""
+    query: str = ""
+
+
 class MockRequest:
     """Mocked request clss"""
     def __init__(self, url: URL, method: str, data: str = ""):
         self.url = url
         self.method = method
         self.data = data
+
+        self.headers = {}
+        self.rel_url = MockRelURL()
+
+    async def read(self):
+        return self.data
 
 
 def requests(url: URL) -> List[MockRequest]:

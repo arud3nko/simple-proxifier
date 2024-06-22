@@ -24,11 +24,16 @@ class BasicAsyncHandler(RequestHandler):
 
     async def __call__(self, request: Request, *args, **kwargs) -> Response:
         async with self._session() as session:
-            async with session.request(method=request.method,
-                                       url=request.url,
+            _data = await request.read()
+            _get_data = request.rel_url.query
+            async with session.request(url=request.url,
+                                       method=request.method,
+                                       headers=request.headers,
+                                       params=_get_data,
+                                       data=_data,
                                        **kwargs) as _response:
-                _text = await _response.text()
+                raw = await _response.read()
 
-        return Response(status=_response.status,
-                        reason=_response.reason,
-                        text=_text)
+        return Response(body=raw,
+                        status=_response.status,
+                        headers=_response.headers)
