@@ -21,11 +21,13 @@ class Proxifier:
 
     async def handle(self, request: Request_T) -> Response_T:
         """Handles request: runs `pre-middlewares` -> yields `request` -> runs `post-middlewares`"""
-        await self._run_middlewares("pre_", request, self._pre)
+        if self._pre:
+            request = await self._run_middlewares("pre_", request, self._pre)
 
         _response = await self._handler(request)
 
-        await self._run_middlewares("post_", request, self._post)
+        if self._post:
+            await self._run_middlewares("post_", request, self._post)
 
         return _response
 
@@ -64,9 +66,9 @@ class Proxifier:
         if index < len(middlewares):
             middleware = middlewares[index]
             return await middleware(request=request,
-                                    call_next=lambda: self._run_middlewares(
+                                    call_next=lambda obj: self._run_middlewares(
                                         type_=type_,
-                                        request=request,
+                                        request=obj,
                                         index=index + 1,
                                         middlewares=middlewares))
         else:

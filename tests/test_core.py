@@ -1,4 +1,4 @@
-from typing import Type, Callable, Coroutine
+from typing import Type
 
 import pytest
 
@@ -7,13 +7,22 @@ from proxifier.core import Proxifier
 from proxifier.types.generic import Request_T
 
 
+SUCCESS = "success"
+
+
 class MockRequest:
     """`Request` mock - contains execute() and calls counter"""
-    def __init__(self):
-        self.calls = 0
+    def __init__(self, calls: int = 0, headers: dict = None):
+        self.calls = calls
+        self.headers = headers
 
     def execute(self):
         self.calls += 1
+        return self
+
+    def clone(self, calls: int = None, headers: dict = None):
+        return self.__class__(calls=calls if calls else self.calls,
+                              headers=headers if headers else self.headers)
 
 
 class MockRequestHandler(RequestHandler):
@@ -31,15 +40,16 @@ class MockMiddleware(ProxifierMiddleware):
     def __init__(self):
         self.calls = 0
 
-    async def __call__(self, request, call_next):
+    async def __call__(self, request, call_next) -> Request_T:
         self.calls += 1
-        await call_next()
+        return await call_next(request)
 
 
 class ChangeRequestHeaderMiddleware(ProxifierMiddleware):
     """This middleware changes incoming request headers"""
     async def __call__(self, request: Request_T, call_next):
-        pass
+        _request = request.clone(headers={SUCCESS: True})
+        return await call_next(_request)
 
 
 class TestProxifierMiddlewaresHandler:
@@ -50,14 +60,24 @@ class TestProxifierMiddlewaresHandler:
         return MockMiddleware
 
     @pytest.fixture(scope="function")
+    def headers_middleware(self) -> Type[ProxifierMiddleware]:
+        """Provides `ChangeRequestHeaderMiddleware` instance"""
+        return ChangeRequestHeaderMiddleware
+
+    @pytest.fixture(scope="function")
     def mock_request(self) -> MockRequest:
         """Provides request mock"""
         return MockRequest()
 
-    @pytest.fixture()
+    @pytest.fixture(scope="function")
     def request_handler(self) -> MockRequestHandler:
         """Provides request handler mock"""
         return MockRequestHandler()
+
+    @pytest.fixture(scope="function")
+    def proxifier(self) -> Proxifier:
+        """Provides `Proxifier` instance"""
+        return Proxifier()
 
     @pytest.mark.asyncio()
     async def test_proxifier(self,
@@ -94,5 +114,21 @@ class TestProxifierMiddlewaresHandler:
 
     @pytest.mark.asyncio
     async def test_middleware_changes_request_instance(self,
-                                                      ):
-        pass
+                                                       headers_middleware: Type[MockMiddleware],
+                                                       mock_request: MockRequest,
+                                                       request_handler: MockRequestHandler,
+                                                       proxifier: Proxifier):
+        """Test if middleware changes `Request` instance correctly"""
+        proxifier.handler = request_handler
+
+        m1 = headers_middleware()
+
+        proxifier.add_pre_middleware(m1)
+
+        assert mock_request.headers is None and mock_request.calls == 0
+
+        request = await proxifier.handle(mock_request)
+
+        assert id(mock_request) != id(request)
+
+        assert request.headers == {SUCCESS: True} and request.calls == 1
